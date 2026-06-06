@@ -56,7 +56,7 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
       const idToken = await result.user.getIdToken();
 
       // Step 2: Hand off to your backend
-      const res = await fetch("/api/auth/google", {
+      const res = await fetch("http://localhost:8080/api/v1/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken }),
