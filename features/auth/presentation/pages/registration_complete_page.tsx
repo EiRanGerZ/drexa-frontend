@@ -9,7 +9,7 @@ export function RegistrationCompletePage() {
 
     const onSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        router.push("/auth/login");
+        router.push("/login");
     };
     
     return (

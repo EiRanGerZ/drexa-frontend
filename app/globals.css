@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -60,6 +60,78 @@
 }
 
 :root {
+  /* ── Drexa design tokens ─────────────────────────────────────── */
+  --brand-mint:        #00FFA3;
+  --brand-blue:        #3B82F6;
+  --brand-gradient:    linear-gradient(135deg, #00FFA3 0%, #3B82F6 100%);
+  --brand-gradient-v:  linear-gradient(180deg, #00FFA3 0%, #3B82F6 100%);
+  --brand-gradient-soft: linear-gradient(180deg, rgba(0,255,163,.6) 0%, rgba(59,130,246,.6) 100%);
+
+  --bg-base:        #0D0F1C;
+  --bg-base-2:      #111827;
+  --bg-app:         linear-gradient(180deg, #0D0F1C 0%, #111827 100%);
+  --surface:        #15182B;
+  --surface-2:      #1C2140;
+  --surface-card:   linear-gradient(180deg, #15182B 0%, #1C2140 100%);
+  --surface-input:  #0F1222;
+  --surface-raised: #1A233D;
+
+  --border-hairline: rgba(255,255,255,0.05);
+  --border-subtle:   rgba(255,255,255,0.08);
+  --border-strong:   #495268;
+  --border-muted:    #3A4163;
+
+  --fg:        #FFFFFF;
+  --fg-2:      rgba(255,255,255,0.70);
+  --fg-3:      rgba(255,255,255,0.50);
+  --fg-4:      rgba(255,255,255,0.40);
+  --fg-slate:  #A5A9B8;
+  --fg-slate-2:#757EA2;
+
+  --up:        #00FFA3;
+  --up-soft:   rgba(0,255,163,0.12);
+  --down:      #FF4D4D;
+  --down-soft: rgba(255,77,77,0.12);
+  --warning:   #FBD60B;
+  --info:      #3B82F6;
+  --success:   #00FFA3;
+
+  --glow-blue: rgba(59,130,246,0.20);
+  --glow-mint: rgba(0,255,163,0.18);
+
+  --shadow-card: 0px 10px 30px 0px rgba(0,0,0,0.50);
+  --shadow-sm:   0px 4px 12px 0px rgba(0,0,0,0.35);
+  --shadow-pop:  0px 16px 48px 0px rgba(0,0,0,0.55);
+
+  --r-xs:  8px;
+  --r-sm:  12px;
+  --r-md:  16px;
+  --r-lg:  24px;
+  --r-xl:  30px;
+  --r-pill: 999px;
+
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+
+  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-num:  'Inter', 'Manrope', system-ui, sans-serif;
+
+  --display:     800 36px/1.05 var(--font-sans);
+  --h1:          700 26px/1.1  var(--font-sans);
+  --h2:          700 24px/1.15 var(--font-sans);
+  --h3:          700 20px/1.2  var(--font-sans);
+  --title:       700 16px/1.3  var(--font-sans);
+  --body:        500 16px/1.5  var(--font-sans);
+  --body-strong: 700 16px/1.5  var(--font-sans);
+  --small:       700 14px/1.4  var(--font-sans);
+  --micro:       600 12px/1.3  var(--font-sans);
+  --nano:        600 10px/1.2  var(--font-sans);
+  --num-lg:      700 24px/1.1  var(--font-num);
+  --num-md:      600 16px/1.2  var(--font-num);
+
+  --cell-py: 14px;
+  /* ── end Drexa design tokens ────────────────────────────────── */
+
   --background: #15182B;
 
   --nigga: #ff0404;
