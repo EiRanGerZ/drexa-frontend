@@ -9,6 +9,7 @@ import {
 } from '@/features/core/presentation/components/primitives';
 import { DONUT_COLORS, ACTIVITY, portfolioTotals } from '@/features/core/domain/data/mock_data';
 import { series, fmtUSD, fmtNum, fmtPct } from '@/features/core/domain/data/trading_utils';
+import { useMarketStream } from '@/features/core/presentation/hooks/use_market_stream';
 
 function Donut({ slices, size = 168 }: { slices: { label: string; value: number; color: string }[]; size?: number }) {
   const total = slices.reduce((a, s) => a + s.value, 0);
@@ -29,7 +30,8 @@ function Donut({ slices, size = 168 }: { slices: { label: string; value: number;
 
 export function PortfolioPage() {
   const router = useRouter();
-  const tot = useMemo(portfolioTotals, []);
+  const { tickers } = useMarketStream();
+  const tot = useMemo(() => portfolioTotals(tickers), [tickers]);
   const [range, setRange] = useState('1M');
   const ranges = ['1W', '1M', '1Y', 'All'];
   const seedMap: Record<string, number> = { '1W': 5, '1M': 9, '1Y': 19, 'All': 33 };

@@ -33,6 +33,7 @@ interface UseGoogleAuthReturn {
 export const useGoogleAuth = (): UseGoogleAuthReturn => {
   const [status, setStatus] = useState<AuthStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   const login = useCallback(async (): Promise<boolean> => {
     setStatus("loading");
@@ -60,7 +61,7 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
 
       setUser(session.user);
       setStatus("success");
-      return session;
+      return true;
     } catch (err: unknown) {
       await auth.signOut().catch(() => {});
 
@@ -79,7 +80,7 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setUser(null);
     setStatus("idle");
     setError(null);

@@ -12,6 +12,7 @@ import {
 } from '@/features/core/domain/data/mock_data';
 import { series, fmtUSD, fmtNum } from '@/features/core/domain/data/trading_utils';
 import { api } from '@/lib/api';
+import { useMarketStream } from '@/features/core/presentation/hooks/use_market_stream';
 
 interface Transaction {
   TxID: string;
@@ -50,7 +51,8 @@ function QuickAction({
 
 export function HomePage() {
   const router = useRouter();
-  const tot = useMemo(portfolioTotals, []);
+  const { tickers } = useMarketStream();
+  const tot = useMemo(() => portfolioTotals(tickers), [tickers]);
   const [range, setRange] = useState('1W');
   const ranges = ['1D', '1W', '1M', '1Y', 'All'];
   const seedMap: Record<string, number> = { '1D': 3, '1W': 7, '1M': 11, '1Y': 23, 'All': 41 };
@@ -70,8 +72,16 @@ export function HomePage() {
       .catch(() => {});
   }, []);
 
-  const movers = [...COINS].sort((a, b) => b.ch - a.ch).slice(0, 5);
-  const watch  = ['BTC', 'SOL', 'ETH', 'LINK'].map(coinOf);
+  const movers = useMemo(() => {
+    return [...COINS].map(c => ({ ...c, ...tickers[c.sym] })).sort((a, b) => b.ch - a.ch).slice(0, 5);
+  }, [tickers]);
+
+  const watch = useMemo(() => {
+    return ['BTC', 'SOL', 'ETH', 'LINK'].map(sym => {
+      const c = coinOf(sym);
+      return { ...c, ...tickers[sym] };
+    });
+  }, [tickers]);
 
   return (
     <TradingLayout>
