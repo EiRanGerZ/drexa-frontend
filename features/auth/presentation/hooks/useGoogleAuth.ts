@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import type { FirebaseError } from "firebase/app";
 import { auth } from "@/features/core/store/firebase";
+import { api } from "@/lib/api";
 import { signInWithBackend } from "./backendAuth";
 
 interface AuthUser {
@@ -28,17 +29,16 @@ interface UseGoogleAuthReturn {
   user: AuthUser | null;
   error: string | null;
   isLoading: boolean;
-  login: () => Promise<AuthSession | null>;
-  logout: () => void;
+  login: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 export const useGoogleAuth = (): UseGoogleAuthReturn => {
   const [status, setStatus] = useState<AuthStatus>("idle");
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  const login = useCallback(async (): Promise<AuthSession | null> => {
+  const login = useCallback(async (): Promise<boolean> => {
     setStatus("loading");
     setError(null);
 
@@ -70,7 +70,7 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
 
       if ((err as { code?: string })?.code === "auth/popup-closed-by-user") {
         setStatus("idle");
-        return null;
+        return false;
       }
 
       const firebaseErr = err as FirebaseError;
@@ -79,11 +79,12 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
         (err instanceof Error ? err.message : "Unknown error occurred");
       setError(message);
       setStatus("error");
-      return null;
+      return false;
     }
   }, []);
 
   const logout = useCallback(async () => {
+    await api.post("/auth/logout").catch(() => {});
     setUser(null);
     setStatus("idle");
     setError(null);

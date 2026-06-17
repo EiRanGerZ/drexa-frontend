@@ -35,9 +35,13 @@ export const useRegister = (): UseRegisterReturn => {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       firebaseUser = result.user;
       const idToken = await firebaseUser.getIdToken();
+      const uid = firebaseUser.uid;
 
       await signInWithBackend(idToken);
       await auth.signOut();
+
+      // Store Firebase UID so the OTP verification page can use it as user_id
+      localStorage.setItem("pending_uid", uid);
 
       setStatus("success");
       return true;

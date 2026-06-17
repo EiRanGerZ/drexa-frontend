@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import type { FirebaseError } from "firebase/app";
 import { auth } from "@/features/core/store/firebase";
+import { api } from "@/lib/api";
 import { signInWithBackend } from "./backendAuth";
 
 interface AuthUser {
@@ -24,7 +25,7 @@ interface UseEmailAuthReturn {
   error: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthSession | null>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const FIREBASE_ERRORS: Record<string, string> = {
@@ -80,7 +81,8 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await api.post("/auth/logout").catch(() => {});
     setUser(null);
     setStatus("idle");
     setError(null);
