@@ -8,6 +8,7 @@ import {
   Icon, Container, CoinBadge, Delta, DeltaPill, Sparkline,
   fUSD, fCompact, rng, series,
 } from "@/features/core/presentation/components/drexa_kit";
+import { useMarketStream } from "@/features/core/presentation/hooks/use_market_stream";
 
 const MK_RAW = [
   { sym: "BTC", name: "Bitcoin",   price: 64182.50, ch: 2.41,  vol: 1284.3e6, mcap: 1264e9, seed: 7 },
@@ -85,10 +86,16 @@ export function MarketsPage() {
   const toggleFav = (s: string) => setFav(prev => { const n = new Set(prev); if (n.has(s)) n.delete(s); else n.add(s); return n; });
   const chOf = (c: MKCoin) => tf === "1h" ? c.ch1h : tf === "7d" ? c.ch7d : c.ch;
 
+  // Live prices + 24h change from the gateway market stream, overlaid on the seed list.
+  const { tickers } = useMarketStream();
+
   const filters: [string, string][] = [["all", "All assets"], ["gainers", "Gainers"], ["losers", "Losers"], ["watchlist", "Watchlist"]];
 
   const rows = useMemo(() => {
-    let r = [...MK];
+    let r = MK.map(c => {
+      const t = tickers[c.sym];
+      return t ? { ...c, price: t.price, ch: t.ch, vol: t.vol } : c;
+    });
     if (filter === "gainers") r = r.filter(c => chOf(c) > 0);
     if (filter === "losers") r = r.filter(c => chOf(c) < 0);
     if (filter === "watchlist") r = r.filter(c => fav.has(c.sym));
@@ -97,7 +104,7 @@ export function MarketsPage() {
     r.sort((a, b) => sort.dir === "desc" ? key(b) - key(a) : key(a) - key(b));
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, q, sort, tf, fav]);
+  }, [filter, q, sort, tf, fav, tickers]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
   const pageRows = rows.slice((page - 1) * perPage, page * perPage);

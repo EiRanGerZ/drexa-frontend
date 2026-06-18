@@ -6,6 +6,7 @@ import { AppShell } from "@/features/core/presentation/components/app_shell";
 import {
   Icon, Container, CoinBadge, COIN, fUSD, fNum, rng,
 } from "@/features/core/presentation/components/drexa_kit";
+import { useCryptoAddress, isCryptoSupported } from "@/features/wallet/presentation/hooks/useCryptoWallet";
 
 const WAL_HOLD = [
   { sym: "BTC",  qty: 0.1312 },
@@ -73,7 +74,14 @@ export function WalletPage() {
   const [copied, setCopied] = useState(false);
   const [assetOpen, setAssetOpen] = useState(false);
   const coinRow = rows.find(r => r.sym === asset) || rows[0];
-  const doCopy = () => { navigator.clipboard?.writeText(ADDR[asset]); setCopied(true); setTimeout(() => setCopied(false), 1600); };
+
+  // Real on-chain deposit address + live balance from the Tatum-backed gateway
+  // (BTC/ETH testnet). Unsupported assets fall back to the static placeholder.
+  const { data: cryptoAddr, loading: addrLoading } = useCryptoAddress(asset);
+  const depositAddress = cryptoAddr?.address ?? ADDR[asset];
+  const qrSeed = depositAddress.split("").reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+  const doCopy = () => { navigator.clipboard?.writeText(depositAddress); setCopied(true); setTimeout(() => setCopied(false), 1600); };
 
   return (
     <AppShell>
@@ -197,19 +205,30 @@ export function WalletPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                <QR seed={asset.charCodeAt(0) * 31 + net} />
+                <QR seed={qrSeed} />
                 <div style={{ width: "100%" }}>
-                  <div style={{ font: "500 12px var(--font)", color: "var(--text-3)", marginBottom: 7 }}>Your {asset} deposit address</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                    <span style={{ font: "500 12px var(--font)", color: "var(--text-3)" }}>Your {asset} deposit address</span>
+                    {isCryptoSupported(asset) && (
+                      <span style={{ font: "600 10.5px var(--font)", color: "var(--up)", background: "var(--up-soft)", padding: "2px 7px", borderRadius: "var(--r-pill)" }}>● Live · Testnet</span>
+                    )}
+                  </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)" }}>
-                    <span style={{ flex: 1, font: "500 12.5px var(--mono)", color: "var(--text-hi)", wordBreak: "break-all", lineHeight: 1.4 }}>{ADDR[asset]}</span>
-                    <button onClick={doCopy} style={{ flex: "none", width: 36, height: 36, borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ flex: 1, font: "500 12.5px var(--mono)", color: "var(--text-hi)", wordBreak: "break-all", lineHeight: 1.4 }}>{addrLoading ? "Generating address…" : depositAddress}</span>
+                    <button onClick={doCopy} disabled={addrLoading} style={{ flex: "none", width: 36, height: 36, borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--card)", cursor: addrLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon name={copied ? "check" : "copy"} size={16} color={copied ? "var(--up)" : "var(--text-2)"} />
                     </button>
                   </div>
                 </div>
+                {isCryptoSupported(asset) && cryptoAddr && (
+                  <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)" }}>
+                    <span style={{ font: "500 12px var(--font)", color: "var(--text-3)" }}>On-chain balance</span>
+                    <span style={{ font: "600 13px var(--mono)", color: "var(--text-hi)", fontVariantNumeric: "tabular-nums" }}>{cryptoAddr.balance} {asset}</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 10, width: "100%", padding: "11px 13px", borderRadius: "var(--r-sm)", background: "var(--warn-soft)", border: "1px solid rgba(217,119,6,0.25)" }}>
                   <Icon name="shield" size={16} color="var(--warn)" style={{ flex: "none", marginTop: 1 }} />
-                  <span style={{ font: "500 12px var(--font)", color: "var(--text-2)", lineHeight: 1.5 }}>Send only <b style={{ color: "var(--text-hi)" }}>{asset}</b> over <b style={{ color: "var(--text-hi)" }}>{NETWORKS[asset][net]}</b>. Sending other assets may result in permanent loss.</span>
+                  <span style={{ font: "500 12px var(--font)", color: "var(--text-2)", lineHeight: 1.5 }}>Send only <b style={{ color: "var(--text-hi)" }}>{asset}</b> over <b style={{ color: "var(--text-hi)" }}>{cryptoAddr?.network ?? NETWORKS[asset][net]}</b>. Sending other assets may result in permanent loss.</span>
                 </div>
               </div>
             )}
