@@ -125,6 +125,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
   // Seed the ticket from the live price only when the pair changes — not on
   // every price tick, otherwise live updates would clobber the user's input.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrice(coin.price.toFixed(coin.price < 10 ? 4 : 2));
     setStop((coin.price * 0.98).toFixed(coin.price < 10 ? 4 : 2));
     setLimit((coin.price * 1.02).toFixed(coin.price < 10 ? 4 : 2));

@@ -1,13 +1,14 @@
 "use client";
 
 /* ── Drexa — Profile / Account (ported from the Claude Design handoff) ── */
-import { CSSProperties, ReactNode, useState } from "react";
+import { CSSProperties, ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/features/core/presentation/components/app_shell";
 import { Icon, Container, Avatar, USER } from "@/features/core/presentation/components/drexa_kit";
 import { useScrollReveal } from "@/features/core/presentation/hooks/use_scroll_reveal";
 import { api } from "@/lib/api";
+import { useUser, clearUserCache } from "@/features/auth/presentation/hooks/useUser";
 
 /* ---- local primitives -------------------------------------------- */
 function Card({ children, style, pad = 26 }: { children: ReactNode; style?: CSSProperties; pad?: number }) {
@@ -45,18 +46,32 @@ function GhostBtn({ children, icon, onClick, danger, primary }: { children: Reac
 
 /* ---- Personal info ----------------------------------------------- */
 interface FieldDef { k: string; label: string; icon: string; val: string; verified?: boolean }
-const FIELDS: FieldDef[] = [
-  { k: "name", label: "Full name", icon: "user", val: USER.name },
-  { k: "email", label: "Email address", icon: "mail", val: USER.email, verified: true },
-  { k: "phone", label: "Phone number", icon: "phone", val: "+1 (415) 832 ••• 47", verified: true },
-  { k: "country", label: "Country / Region", icon: "globe", val: "United States" },
-  { k: "lang", label: "Language", icon: "globe", val: "English (US)" },
-  { k: "tz", label: "Timezone", icon: "clock2", val: "GMT−08:00 · Pacific Time" },
-];
+
 function PersonalInfo() {
+  const { user, name } = useUser();
+  const FIELDS: FieldDef[] = [
+    { k: "name", label: "Full name", icon: "user", val: name || "User" },
+    { k: "email", label: "Email address", icon: "mail", val: user?.email || "", verified: true },
+    { k: "phone", label: "Phone number", icon: "phone", val: user?.phone || "Not provided", verified: Boolean(user?.phone) },
+    { k: "country", label: "Country / Region", icon: "globe", val: "United States" },
+    { k: "lang", label: "Language", icon: "globe", val: "English (US)" },
+    { k: "tz", label: "Timezone", icon: "clock2", val: "GMT−08:00 · Pacific Time" },
+  ];
+
   const [editing, setEditing] = useState(false);
   const [vals, setVals] = useState<Record<string, string>>(() => Object.fromEntries(FIELDS.map(f => [f.k, f.val])));
   const [draft, setDraft] = useState<Record<string, string>>(vals);
+
+  useEffect(() => {
+    if (user) {
+      const updatedVals = Object.fromEntries(FIELDS.map(f => [f.k, f.val]));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVals(updatedVals);
+      setDraft(updatedVals);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const start = () => { setDraft(vals); setEditing(true); };
   const save = () => { setVals(draft); setEditing(false); };
   return (
@@ -108,13 +123,14 @@ const DEVICES = [
   { dev: "iPhone 15 Pro · Drexa App", loc: "San Francisco, US", time: "2 hours ago", current: false },
   { dev: "Windows · Firefox", loc: "New York, US", time: "Jun 12, 2026", current: false },
 ];
+const StatusPill = ({ on }: { on: boolean }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: "var(--r-pill)", font: "600 11.5px var(--font)", background: on ? "var(--up-soft)" : "var(--card-2)", color: on ? "var(--up)" : "var(--text-3)" }}>
+    <span style={{ width: 6, height: 6, borderRadius: "50%", background: on ? "var(--up)" : "var(--text-4)" }} />{on ? "Enabled" : "Off"}
+  </span>
+);
+
 function Security() {
   const [twoFA, setTwoFA] = useState({ app: true, sms: false, email: true });
-  const StatusPill = ({ on }: { on: boolean }) => (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: "var(--r-pill)", font: "600 11.5px var(--font)", background: on ? "var(--up-soft)" : "var(--card-2)", color: on ? "var(--up)" : "var(--text-3)" }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: on ? "var(--up)" : "var(--text-4)" }} />{on ? "Enabled" : "Off"}
-    </span>
-  );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <Card>
@@ -219,8 +235,17 @@ export function ProfilePage() {
   useScrollReveal();
   const router = useRouter();
   const [tab, setTab] = useState("personal");
+  const { user, name, tier } = useUser();
 
-  const onLogout = async () => { await api.post("/auth/logout").catch(() => {}); router.replace("/login"); };
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
+
+  const onLogout = async () => { 
+    await api.post("/auth/logout").catch(() => {}); 
+    clearUserCache();
+    router.replace("/login"); 
+  };
 
   return (
     <AppShell>
@@ -236,12 +261,12 @@ export function ProfilePage() {
             <Avatar size={84} badge />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <h1 style={{ font: "700 30px var(--font)", color: "var(--text-hi)", letterSpacing: "-.025em" }}>{USER.name}</h1>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, font: "600 12px var(--font)", color: "var(--up)", background: "var(--up-soft)", padding: "5px 12px", borderRadius: "var(--r-pill)" }}><Icon name="verified" size={14} color="var(--up)" />Verified · Level 2</span>
+                <h1 style={{ font: "700 30px var(--font)", color: "var(--text-hi)", letterSpacing: "-.025em" }}>{name || "User"}</h1>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, font: "600 12px var(--font)", color: "var(--up)", background: "var(--up-soft)", padding: "5px 12px", borderRadius: "var(--r-pill)" }}><Icon name="verified" size={14} color="var(--up)" />{tier || "Unverified"} · Level {user?.kyc_level || 0}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 18, marginTop: 9, flexWrap: "wrap" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "500 13.5px var(--font)", color: "var(--text-3)" }}><Icon name="mail" size={15} color="var(--text-3)" />{USER.email}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "500 13.5px var(--font)", color: "var(--text-3)" }}><Icon name="clock2" size={15} color="var(--text-3)" />Member since {USER.since}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "500 13.5px var(--font)", color: "var(--text-3)" }}><Icon name="mail" size={15} color="var(--text-3)" />{user?.email || "Loading..."}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "500 13.5px var(--font)", color: "var(--text-3)" }}><Icon name="clock2" size={15} color="var(--text-3)" />Member since {mounted && user ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : "..."}</span>
               </div>
             </div>
           </div>
