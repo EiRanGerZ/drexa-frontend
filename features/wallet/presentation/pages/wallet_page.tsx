@@ -8,6 +8,8 @@ import {
 } from "@/features/core/presentation/components/drexa_kit";
 import { useScrollReveal } from "@/features/core/presentation/hooks/use_scroll_reveal";
 import { api } from "@/lib/api";
+import { useCryptoAddress, isCryptoSupported } from "@/features/wallet/presentation/hooks/useCryptoWallet";
+import { useLedgerBalances, toMainUnit, type LedgerBalance } from "@/features/wallet/presentation/hooks/useLedgerBalances";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -40,11 +42,25 @@ const TXNS = [
 ];
 
 interface WalRow { sym: string; qty: number; price: number; value: number; inOrders: number; available: number; name: string; }
-function walCompute(): WalRow[] {
-  return WAL_HOLD.map(h => {
-    const c = COIN(h.sym); const price = c ? c.price : 1;
-    const value = h.qty * price; const inOrders = h.sym === "USDC" ? value * 0.12 : 0;
-    return { ...h, price, value, inOrders, available: value - inOrders, name: c ? c.name : (h.sym === "USDT" ? "Tether" : h.sym) };
+
+// Assets always shown so deposit/withdraw stay reachable even at zero balance.
+const WALLET_ASSETS = ["BTC", "ETH", "USD"];
+
+// Build rows from the real ledger (`/wallet/balances`). Balances are stored in the
+// smallest unit; convert to the main unit and value them at the coin's USD price.
+function walCompute(balances: Record<string, LedgerBalance>): WalRow[] {
+  const syms = Array.from(new Set([...WALLET_ASSETS, ...Object.keys(balances)]));
+  return syms.map(sym => {
+    const c = COIN(sym);
+    const price = (sym === "USD" || sym === "USDC" || sym === "USDT") ? 1 : (c ? c.price : 0);
+    const led = balances[sym];
+    const qty = led ? toMainUnit(sym, led.balance) : 0;
+    const availQty = led ? toMainUnit(sym, led.available) : 0;
+    const value = qty * price;
+    const inOrders = led ? toMainUnit(sym, led.locked) * price : 0;
+    const available = availQty * price;
+    const name = c ? c.name : (sym === "USD" ? "US Dollar" : sym === "USDT" ? "Tether" : sym);
+    return { sym, qty, price, value, inOrders, available, name };
   }).sort((a, b) => b.value - a.value);
 }
 
@@ -87,7 +103,7 @@ function StripeCheckoutForm({ clientSecret, amount, asset, onComplete }: { clien
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-      <PaymentElement onLoadError={(e: { elementType: string; error: { type: string; message: string } }) => {
+      <PaymentElement onLoadError={(e) => {
         console.error("Stripe PaymentElement load error:", e);
         setError(e.error?.message || "Failed to load payment form. Please check your Stripe configuration or try again.");
       }} />
@@ -159,6 +175,49 @@ function DepositModalContent({ closeModal }: { closeModal: () => void }) {
         </Elements>
       )}
     </>
+  );
+}
+
+/* ---- Crypto deposit (Tatum on-chain address) -------------------- */
+function CryptoDepositModalContent({ asset }: { asset: string }) {
+  const { data, loading, error } = useCryptoAddress(asset);
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    if (!data) return;
+    navigator.clipboard?.writeText(data.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  if (loading) return <div style={{ textAlign: "center", padding: "28px 0", font: "500 14px var(--font)", color: "var(--text-3)" }}>Generating your {asset} address…</div>;
+  if (error || !data) return <div style={{ color: "var(--warn)", font: "500 13px var(--font)", padding: "12px 0", textAlign: "center" }}>{error ?? "Failed to load deposit address"}</div>;
+
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(data.address)}`;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div style={{ background: "#fff", padding: 10, borderRadius: "var(--r-md)" }}><img src={qr} width={160} height={160} alt={`${asset} address QR`} /></div>
+      <div style={{ width: "100%" }}>
+        <div style={{ font: "500 12px var(--font)", color: "var(--text-3)", marginBottom: 7, display: "flex", justifyContent: "space-between" }}>
+          <span>Your {asset} deposit address</span>
+          <span style={{ color: "var(--up)" }}>● {data.network}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)" }}>
+          <span style={{ flex: 1, font: "500 12.5px var(--mono)", color: "var(--text-hi)", wordBreak: "break-all", lineHeight: 1.4 }}>{data.address}</span>
+          <button onClick={copy} style={{ flex: "none", width: 36, height: 36, borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name={copied ? "check" : "copy"} size={16} color={copied ? "var(--up)" : "var(--text-2)"} />
+          </button>
+        </div>
+      </div>
+      <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)" }}>
+        <span style={{ font: "500 12px var(--font)", color: "var(--text-3)" }}>On-chain balance</span>
+        <span style={{ font: "600 13px var(--mono)", color: "var(--text-hi)", fontVariantNumeric: "tabular-nums" }}>{data.balance} {asset}</span>
+      </div>
+      <div style={{ display: "flex", gap: 10, width: "100%", padding: "11px 13px", borderRadius: "var(--r-sm)", background: "var(--warn-soft)", border: "1px solid rgba(217,119,6,0.25)" }}>
+        <Icon name="shield" size={16} color="var(--warn)" style={{ flex: "none", marginTop: 1 }} />
+        <span style={{ font: "500 12px var(--font)", color: "var(--text-2)", lineHeight: 1.5 }}>Send only <b style={{ color: "var(--text-hi)" }}>{asset}</b> over <b style={{ color: "var(--text-hi)" }}>{data.network}</b>. Sending any other asset may be lost permanently.</span>
+      </div>
+    </div>
   );
 }
 
@@ -384,7 +443,8 @@ const tdWm: CSSProperties = { textAlign: "right", padding: "16px 24px", font: "5
 
 export function WalletPage() {
   useScrollReveal();
-  const rows = walCompute();
+  const { balances, refresh: refreshBalances } = useLedgerBalances();
+  const rows = walCompute(balances);
   const total = rows.reduce((a, r) => a + r.value, 0);
   const available = rows.reduce((a, r) => a + r.available, 0);
   const inOrders = rows.reduce((a, r) => a + r.inOrders, 0);
@@ -396,7 +456,7 @@ export function WalletPage() {
 
   const coinRow = rows.find(r => r.sym === asset) || rows[0];
   const openModal = (type: string, sym?: string) => { setModal(type); if (sym) { setAsset(sym); setNet(0); } };
-  const closeModal = () => setModal(null);
+  const closeModal = () => { setModal(null); refreshBalances(); };
   const assetSelectProps = { rows, asset, coinRow, open: assetOpen, setOpen: setAssetOpen, setAsset, setNet };
 
   return (
@@ -498,9 +558,15 @@ export function WalletPage() {
 
       {/* ── DEPOSIT MODAL ─────────────────────────────────────────── */}
       {modal === "deposit" && (
-        <Modal title="Deposit USD" icon="deposit" onClose={closeModal}>
-          <DepositModalContent closeModal={closeModal} />
-        </Modal>
+        isCryptoSupported(asset) ? (
+          <Modal title={`Deposit ${asset}`} icon="deposit" onClose={closeModal}>
+            <CryptoDepositModalContent asset={asset} />
+          </Modal>
+        ) : (
+          <Modal title="Deposit USD" icon="deposit" onClose={closeModal}>
+            <DepositModalContent closeModal={closeModal} />
+          </Modal>
+        )
       )}
 
       {/* ── WITHDRAW MODAL ────────────────────────────────────────── */}
