@@ -68,7 +68,7 @@ export function RegisterPage() {
 
   const onCreate = async () => {
     if (!valid || isLoading) return;
-    const ok = await registerUser(email, pw);
+    const ok = await registerUser(email, pw, name.trim());
     if (ok) router.push("/login");
   };
 

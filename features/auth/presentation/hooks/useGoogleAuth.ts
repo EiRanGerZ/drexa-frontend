@@ -1,9 +1,5 @@
 import { useState, useCallback } from "react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import type { FirebaseError } from "firebase/app";
-import { auth } from "@/features/core/store/firebase";
 import { api } from "@/lib/api";
-import { signInWithBackend } from "./backendAuth";
 
 interface AuthUser {
   id: string;
@@ -13,16 +9,7 @@ interface AuthUser {
   provider: "google";
 }
 
-interface AuthSession {
-  message: string;
-  user: AuthUser;
-}
-
 type AuthStatus = "idle" | "loading" | "success" | "error";
-
-const FIREBASE_ERRORS: Record<string, string> = {
-  "auth/operation-not-allowed": "Google sign-in is not enabled in Firebase Authentication",
-};
 
 interface UseGoogleAuthReturn {
   status: AuthStatus;
@@ -33,54 +20,17 @@ interface UseGoogleAuthReturn {
   logout: () => Promise<void>;
 }
 
+// Google OAuth was handled by Firebase. The gateway now uses email + password only
+// and has no OAuth endpoint, so this provider is unavailable until one is added.
 export const useGoogleAuth = (): UseGoogleAuthReturn => {
   const [status, setStatus] = useState<AuthStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const login = useCallback(async (): Promise<boolean> => {
-    setStatus("loading");
-    setError(null);
-
-    const provider = new GoogleAuthProvider();
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      const backendAuth = await signInWithBackend(idToken);
-
-      await auth.signOut();
-
-      const session: AuthSession = {
-        message: backendAuth.message ?? "sign-in successful",
-        user: {
-          id: result.user.uid,
-          email: result.user.email ?? "",
-          name: result.user.displayName ?? "",
-          avatar: result.user.photoURL ?? "",
-          provider: "google",
-        },
-      };
-
-      setUser(session.user);
-      setStatus("success");
-      return true;
-    } catch (err: unknown) {
-      await auth.signOut().catch(() => {});
-
-      if ((err as { code?: string })?.code === "auth/popup-closed-by-user") {
-        setStatus("idle");
-        return false;
-      }
-
-      const firebaseErr = err as FirebaseError;
-      const message =
-        FIREBASE_ERRORS[firebaseErr?.code] ??
-        (err instanceof Error ? err.message : "Unknown error occurred");
-      setError(message);
-      setStatus("error");
-      return false;
-    }
+    setError("Google sign-in is unavailable — please sign in with email and password.");
+    setStatus("error");
+    return false;
   }, []);
 
   const logout = useCallback(async () => {
@@ -90,12 +40,5 @@ export const useGoogleAuth = (): UseGoogleAuthReturn => {
     setError(null);
   }, []);
 
-  return {
-    status,
-    user,
-    error,
-    isLoading: status === "loading",
-    login,
-    logout,
-  };
+  return { status, user, error, isLoading: status === "loading", login, logout };
 };
