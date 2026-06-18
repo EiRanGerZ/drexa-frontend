@@ -7,18 +7,8 @@ import {
   Icon, Container, CoinBadge, Delta,
   COINS, COIN, fUSD, fNum, fCompact, rng, type Coin,
 } from "@/features/core/presentation/components/drexa_kit";
-
-interface Candle { o: number; h: number; l: number; c: number; }
-function candles(seed: number, n: number, base: number, vol: number): Candle[] {
-  const r = rng(seed); let px = base; const out: Candle[] = [];
-  for (let i = 0; i < n; i++) {
-    const o = px; const drift = (r() - 0.48) * vol; const c = Math.max(0.01, o * (1 + drift));
-    const hi = Math.max(o, c) * (1 + r() * vol * 0.5);
-    const lo = Math.min(o, c) * (1 - r() * vol * 0.5);
-    out.push({ o, h: hi, l: lo, c }); px = c;
-  }
-  return out;
-}
+import { useMarketStream } from "@/features/core/presentation/hooks/use_market_stream";
+import { useBinanceKlines, type Candle } from "@/features/core/presentation/hooks/use_binance_klines";
 
 function CandleChart({ data, h = 360 }: { data: Candle[]; h?: number }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -29,6 +19,9 @@ function CandleChart({ data, h = 360 }: { data: Candle[]; h?: number }) {
     const ro = new ResizeObserver(es => setW(es[0].contentRect.width));
     ro.observe(wrapRef.current); return () => ro.disconnect();
   }, []);
+  if (data.length === 0) {
+    return <div ref={wrapRef} style={{ width: "100%", height: h, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", font: "500 13px var(--font)" }}>Loading chart…</div>;
+  }
   const padR = 64, padT = 14, padB = 24, padL = 6;
   const innerW = Math.max(10, w - padL - padR), innerH = h - padT - padB;
   const lo = Math.min(...data.map(d => d.l)), hi = Math.max(...data.map(d => d.h)); const range = hi - lo || 1;
@@ -128,12 +121,15 @@ function OrderTicket({ coin }: { coin: Coin }) {
   const [limit, setLimit] = useState((coin.price * 1.02).toFixed(coin.price < 10 ? 4 : 2));
   const [amount, setAmount] = useState("");
   const [pct, setPct] = useState(0);
+  // Seed the ticket from the live price only when the pair changes — not on
+  // every price tick, otherwise live updates would clobber the user's input.
   useEffect(() => {
     setPrice(coin.price.toFixed(coin.price < 10 ? 4 : 2));
     setStop((coin.price * 0.98).toFixed(coin.price < 10 ? 4 : 2));
     setLimit((coin.price * 1.02).toFixed(coin.price < 10 ? 4 : 2));
     setAmount(""); setPct(0);
-  }, [coin.sym, coin.price]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coin.sym]);
 
   const isBuy = side === "buy";
   const balQuote = 12480.00, balBase = 0.1312;
@@ -277,9 +273,23 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
   const [sym, setSym] = useState(initial);
   const [tf, setTf] = useState("1H");
   const [pairOpen, setPairOpen] = useState(false);
-  const coin = COIN(sym)!;
-  const data = useMemo(() => candles(coin.seed * 7 + TFS.indexOf(tf), 52, coin.price * 0.93, 0.022), [sym, tf, coin.seed, coin.price]);
-  const hi = coin.price * 1.045, lo = coin.price * 0.962;
+  const base = COIN(sym)!;
+
+  // Live price/stats from the gateway market stream; fall back to seed data until first tick.
+  const { tickers, isConnected } = useMarketStream();
+  const t = tickers[sym];
+  const coin: Coin = {
+    ...base,
+    price: t?.price ?? base.price,
+    ch: t?.ch ?? base.ch,
+    vol: t?.vol ?? base.vol,
+  };
+
+  // Realtime candlesticks straight from Binance (historical + live last candle).
+  const { candles: data, loading: chartLoading } = useBinanceKlines(sym, tf, 120);
+
+  const hi = t?.high ?? coin.price * 1.045;
+  const lo = t?.low ?? coin.price * 0.962;
   const stats: [string, string][] = [["24h High", fNum(hi, coin.price < 10 ? 4 : 2)], ["24h Low", fNum(lo, coin.price < 10 ? 4 : 2)], ["24h Volume", fCompact(coin.vol)]];
   return (
     <AppShell>
@@ -304,7 +314,10 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
             )}
           </div>
           <div>
-            <div style={{ font: "700 24px var(--mono)", color: coin.ch >= 0 ? "var(--up)" : "var(--down)", fontVariantNumeric: "tabular-nums" }}>{fUSD(coin.price, coin.price < 10 ? 4 : 2)}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ font: "700 24px var(--mono)", color: coin.ch >= 0 ? "var(--up)" : "var(--down)", fontVariantNumeric: "tabular-nums" }}>{fUSD(coin.price, coin.price < 10 ? 4 : 2)}</span>
+              <span title={isConnected ? "Live" : "Connecting…"} style={{ width: 7, height: 7, borderRadius: "50%", background: isConnected ? "var(--up)" : "var(--text-4)", boxShadow: isConnected ? "0 0 0 3px var(--up-soft)" : "none" }} />
+            </div>
             <div style={{ marginTop: 2 }}><Delta v={coin.ch} size={13} icon /></div>
           </div>
           <div style={{ display: "flex", gap: 28 }}>
@@ -325,7 +338,9 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
                   }}>{t}</button>
                 ))}
               </div>
-              <CandleChart data={data} h={360} />
+              <div style={{ opacity: chartLoading ? 0.45 : 1, transition: "opacity .2s" }}>
+                <CandleChart data={data} h={360} />
+              </div>
             </div>
             <OrdersPanel />
           </div>

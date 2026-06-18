@@ -1,9 +1,6 @@
 import { useState, useCallback } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import type { FirebaseError } from "firebase/app";
-import { auth } from "@/features/core/store/firebase";
 import { api } from "@/lib/api";
-import { signInWithBackend } from "./backendAuth";
+import { loginWithBackend } from "./backendAuth";
 
 interface AuthUser {
   id: string;
@@ -28,16 +25,6 @@ interface UseEmailAuthReturn {
   logout: () => Promise<void>;
 }
 
-const FIREBASE_ERRORS: Record<string, string> = {
-  "auth/user-not-found": "Invalid email or password",
-  "auth/wrong-password": "Invalid email or password",
-  "auth/invalid-credential": "Invalid email or password",
-  "auth/invalid-email": "Invalid email address",
-  "auth/user-disabled": "This account has been disabled",
-  "auth/too-many-requests": "Too many attempts. Please try again later",
-  "auth/operation-not-allowed": "Email/password sign-in is not enabled in Firebase Authentication",
-};
-
 export const useEmailAuth = (): UseEmailAuthReturn => {
   const [status, setStatus] = useState<AuthStatus>("idle");
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -48,33 +35,21 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
     setError(null);
 
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await result.user.getIdToken();
-      const backendAuth = await signInWithBackend(idToken);
-
-      await auth.signOut();
+      // The gateway verifies credentials and sets HttpOnly cookies — no token handling here.
+      const res = await loginWithBackend(email, password);
 
       const session: AuthSession = {
-        message: backendAuth.message ?? "sign-in successful",
-        user: {
-          id: result.user.uid,
-          email: result.user.email ?? email,
-          name: result.user.displayName ?? "",
-          avatar: result.user.photoURL ?? "",
-        },
+        message: res.message ?? "login successful",
+        user: { id: "", email, name: "", avatar: "" },
       };
 
       setUser(session.user);
       setStatus("success");
       return session;
     } catch (err: unknown) {
-      await auth.signOut().catch(() => {});
-
-      const firebaseErr = err as FirebaseError;
-      const message =
-        FIREBASE_ERRORS[firebaseErr?.code] ??
-        (err instanceof Error ? err.message : "Something went wrong");
-
+      // The api client throws an Error whose message is the gateway's `error` field
+      // (e.g. "invalid email or password", "too many attempts, please try again later").
+      const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
       setStatus("error");
       return null;
