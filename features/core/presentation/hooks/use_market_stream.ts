@@ -34,7 +34,7 @@ function connectWebSocket() {
   }
 
   // Bypass Next.js API rewrites for WebSockets as it often drops upgrades in dev
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/api/v1/market/stream';
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/api/v1/market/ws';
   sharedWs = new WebSocket(wsUrl);
 
   sharedWs.onopen = () => {

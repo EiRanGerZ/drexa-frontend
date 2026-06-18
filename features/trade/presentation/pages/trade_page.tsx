@@ -10,6 +10,7 @@ import {
 import { useMarketStream } from "@/features/core/presentation/hooks/use_market_stream";
 import { useBinanceKlines, type Candle } from "@/features/core/presentation/hooks/use_binance_klines";
 import { usePlaceOrder } from "../hooks/usePlaceOrder";
+import { useOrderBook } from "../hooks/useOrderBook";
 import type { OrderSide, OrderType } from "../../model/order";
 import { useScrollReveal } from "@/features/core/presentation/hooks/use_scroll_reveal";
 
@@ -68,17 +69,33 @@ function CandleChart({ data, h = 360 }: { data: Candle[]; h?: number }) {
   );
 }
 
-function OrderBook({ price }: { price: number }) {
+function OrderBook({ price, pairId }: { price: number; pairId: string }) {
+  // Live depth from the Go matching engine (polled REST snapshot).
+  const { book } = useOrderBook(pairId, 12);
+
   const rows = useMemo(() => {
+    const hasLive = !!book && (book.bids.length > 0 || book.asks.length > 0);
+    if (hasLive) {
+      const top = (levels: { price: number; quantity: number }[]) =>
+        levels
+          .map(l => ({ p: l.price, amt: l.quantity, total: l.price * l.quantity }))
+          .sort((a, b) => b.p - a.p)
+          .slice(0, 7);
+      // asks descending (lowest sits nearest the spread), bids descending too.
+      return { asks: top(book!.asks), bids: top(book!.bids), live: true };
+    }
+
+    // Fallback: synthetic depth so the panel still reads as a live book when the
+    // in-memory engine has no resting orders for this pair yet.
     const r = rng(Math.round(price * 100) + 5);
     const mk = (sign: number) => Array.from({ length: 7 }, (_, i) => {
       const p = price * (1 + sign * (i + 1) * 0.0007 * (1 + r() * 0.5));
       const amt = +(r() * 2.4 + 0.05).toFixed(4);
       return { p, amt, total: p * amt };
     });
-    return { asks: mk(1).sort((a, b) => b.p - a.p), bids: mk(-1).sort((a, b) => b.p - a.p) };
-  }, [price]);
-  const maxTot = Math.max(...[...rows.asks, ...rows.bids].map(r => r.total));
+    return { asks: mk(1).sort((a, b) => b.p - a.p), bids: mk(-1).sort((a, b) => b.p - a.p), live: false };
+  }, [book, price]);
+  const maxTot = Math.max(...[...rows.asks, ...rows.bids].map(r => r.total), 1e-9);
   const Row = ({ r, side }: { r: { p: number; amt: number; total: number }; side: "ask" | "bid" }) => (
     <div style={{ position: "relative", display: "flex", justifyContent: "space-between", padding: "4px 14px", font: "500 12px var(--mono)", fontVariantNumeric: "tabular-nums" }}>
       <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: (r.total / maxTot * 100) + "%", background: side === "ask" ? "var(--down-soft)" : "var(--up-soft)" }} />
@@ -88,7 +105,11 @@ function OrderBook({ price }: { price: number }) {
   );
   return (
     <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-      <div style={{ padding: "16px 18px 12px", font: "700 15px var(--font)", color: "var(--text-hi)" }}>Order book</div>
+      <div style={{ padding: "16px 18px 12px", display: "flex", alignItems: "center", gap: 8, font: "700 15px var(--font)", color: "var(--text-hi)" }}>
+        <span>Order book</span>
+        <span title={rows.live ? "Live depth from matching engine" : "No resting orders — simulated depth"}
+          style={{ width: 7, height: 7, borderRadius: "50%", background: rows.live ? "var(--up)" : "var(--text-4)", boxShadow: rows.live ? "0 0 0 3px var(--up-soft)" : "none" }} />
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "0 14px 8px", font: "600 10.5px var(--font)", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
         <span>Price (USDC)</span><span>Amount</span>
       </div>
@@ -387,7 +408,7 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
           </div>
           <div data-reveal="slide-right" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <OrderTicket coin={coin} />
-            <OrderBook price={coin.price} />
+            <OrderBook price={coin.price} pairId={`${sym}_USDC`} />
           </div>
         </div>
       </Container>
