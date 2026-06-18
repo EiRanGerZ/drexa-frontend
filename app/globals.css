@@ -339,6 +339,13 @@ select option { color: #fff; }
 .txt-link:hover, .foot-link:hover { color: var(--blue-hover) !important; }
 .soc:hover { border-color: var(--border-strong); background: var(--card); }
 
+/* profile page */
+.pf-ghost:hover { border-color: var(--border-strong); background: var(--card-2); }
+.pf-prim:hover { background: var(--blue-hover) !important; }
+.pf-danger:hover { border-color: var(--down) !important; background: var(--down-soft) !important; color: var(--down) !important; }
+.pf-tab:hover { background: var(--card-2); }
+.pf-input:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px var(--blue-soft); }
+
 /* hide scrollbar for drag carousel */
 .hide-scroll {
   scrollbar-width: none !important;
