@@ -5,6 +5,7 @@
    Ported from the Claude Design handoff bundle (shell.jsx) to typed TSX.
    ========================================================================= */
 import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
+import { useUser } from "@/features/auth/presentation/hooks/useUser";
 
 /* ============================================================ ICONS */
 export const ICONS: Record<string, string> = {
@@ -72,11 +73,14 @@ export const USER = {
   avatarBg: "linear-gradient(135deg,#3D8EF0,#1A6FD4)",
 };
 export function Avatar({ size = 32, badge = false }: { size?: number; badge?: boolean }) {
+  const { initials, tier } = useUser();
+  const showBadge = badge && tier === 'Verified';
+
   return (
     <span style={{ position: "relative", flex: "none", display: "inline-flex" }}>
       <span style={{ width: size, height: size, borderRadius: "50%", background: USER.avatarBg, color: "#fff",
-        display: "inline-flex", alignItems: "center", justifyContent: "center", font: `700 ${Math.round(size * 0.4)}px var(--font)`, letterSpacing: ".01em" }}>{USER.initials}</span>
-      {badge && (
+        display: "inline-flex", alignItems: "center", justifyContent: "center", font: `700 ${Math.round(size * 0.4)}px var(--font)`, letterSpacing: ".01em" }}>{initials || "U"}</span>
+      {showBadge && (
         <span style={{ position: "absolute", right: -1, bottom: -1, width: Math.max(11, size * 0.32), height: Math.max(11, size * 0.32), borderRadius: "50%", background: "var(--up)", border: "2px solid var(--navbar)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon name="check" size={Math.max(6, size * 0.18)} color="#fff" stroke={3.4} />
         </span>

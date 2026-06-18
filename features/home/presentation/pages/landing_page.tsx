@@ -100,7 +100,7 @@ function Hero() {
 }
 
 function FeaturedAssets() {
-  const baseFeat = ["BTC", "ETH", "SOL", "LINK", "USDC", "ADA", "XRP", "DOT"].map(s => COIN(s)).filter(Boolean) as any[];
+  const baseFeat = ["BTC", "ETH", "SOL", "LINK", "USDC", "ADA", "XRP", "DOT"].map(s => COIN(s)).filter(Boolean) as NonNullable<ReturnType<typeof COIN>>[];
   const feat = [...baseFeat, ...baseFeat, ...baseFeat];
 
   const scrollRef = useRef<HTMLDivElement>(null);

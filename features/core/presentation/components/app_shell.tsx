@@ -9,6 +9,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, Logo, Avatar, USER } from "./drexa_kit";
 import { api } from "@/lib/api";
+import { useUser, clearUserCache } from "@/features/auth/presentation/hooks/useUser";
 
 interface MenuItem { icon: string; title: string; sub: string; href?: string; }
 interface Menu { id: string; label: string; href: string; items: MenuItem[]; }
@@ -78,8 +79,10 @@ function Dropdown({ items, style }: { items: MenuItem[], style?: CSSProperties }
   );
 }
 
+
 function AccountMenu({ onLogout }: { onLogout: () => void }) {
   const [open, setOpen] = useState(false);
+  const { name, tier, user } = useUser();
   const links: { icon: string; title: string; sub: string; href: string }[] = [
     { icon: "user", title: "Profile & Account", sub: "Personal info, security & KYC", href: "/profile" },
     { icon: "overview", title: "Portfolio", sub: "Holdings, returns & allocation", href: "/portfolio" },
@@ -96,8 +99,8 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
       }}>
         <Avatar size={32} badge />
         <span style={{ textAlign: "left", lineHeight: 1.15 }}>
-          <span style={{ display: "block", font: "600 13px var(--font)", color: "var(--text-hi)" }}>{USER.name}</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 3, font: "600 11px var(--mono)", color: "var(--up)" }}><Icon name="verified" size={11} color="var(--up)" />{USER.tier}</span>
+          <span style={{ display: "block", font: "600 13px var(--font)", color: "var(--text-hi)" }}>{name || "User"}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 3, font: "600 11px var(--mono)", color: "var(--up)" }}><Icon name="verified" size={11} color="var(--up)" />{tier || "Unverified"}</span>
         </span>
         <Icon name="chevDown" size={15} color="var(--text-3)" style={{ marginLeft: 1, transform: open ? "rotate(180deg)" : "none", transition: "transform .18s" }} />
       </button>
@@ -110,8 +113,8 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
           <Link href="/profile" className="dd-item" style={{ ...itemStyle, marginBottom: 2 }}>
             <span style={{ flex: "none" }}><Avatar size={38} badge /></span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", font: "600 14px var(--font)", color: "var(--text-hi)" }}>{USER.name}</span>
-              <span style={{ display: "block", font: "500 12px var(--font)", color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{USER.email}</span>
+              <span style={{ display: "block", font: "600 14px var(--font)", color: "var(--text-hi)" }}>{name || "User"}</span>
+              <span style={{ display: "block", font: "500 12px var(--font)", color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email || "Loading..."}</span>
             </span>
           </Link>
           <div style={{ height: 1, background: "var(--border)", margin: "4px 4px 6px" }} />
@@ -138,7 +141,7 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-export function TopNav({ authed = false }: { authed?: boolean }) {
+export function TopNav() {
   const [open, setOpen] = useState<string | null>(null);
   const [lastOpen, setLastOpen] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -177,7 +180,12 @@ export function TopNav({ authed = false }: { authed?: boolean }) {
     }
   }, [open]);
 
-  const onLogout = async () => { await api.post("/auth/logout").catch(() => {}); setAuthed(false); router.replace("/login"); };
+  const onLogout = async () => { 
+    await api.post("/auth/logout").catch(() => {}); 
+    clearUserCache();
+    setAuthed(false); 
+    router.replace("/login"); 
+  };
 
   const activeMenu = MENUS.find(m => m.id === (open || lastOpen)) || MENUS[0];
 
