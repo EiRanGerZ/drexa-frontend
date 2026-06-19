@@ -10,7 +10,7 @@ export interface CryptoAsset {
 }
 
 /** Currencies the Tatum-backed gateway serves real on-chain addresses for. */
-export const CRYPTO_SUPPORTED = ["BTC", "ETH"] as const;
+export const CRYPTO_SUPPORTED = ["BTC", "ETH", "SOL", "USDT", "BNB"] as const;
 
 export function isCryptoSupported(currency: string): boolean {
   return (CRYPTO_SUPPORTED as readonly string[]).includes(currency);
@@ -27,15 +27,19 @@ export function useCryptoAddress(currency: string, enabled = true) {
 
   useEffect(() => {
     if (!enabled || !isCryptoSupported(currency)) {
-      setData(null);
-      setError(null);
-      setLoading(false);
+      queueMicrotask(() => {
+        setData(null);
+        setError(null);
+        setLoading(false);
+      });
       return;
     }
 
     let active = true;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
 
     api
       .get<CryptoAsset>(`/wallet/crypto/address/${currency}`)
