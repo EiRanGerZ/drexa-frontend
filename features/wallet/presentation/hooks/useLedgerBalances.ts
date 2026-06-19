@@ -21,7 +21,7 @@ type BalanceResponse = {
 
 /** Decimals to convert a currency's smallest unit to its main unit. */
 export const CURRENCY_DECIMALS: Record<string, number> = {
-  BTC: 8, ETH: 18, USD: 2, USDC: 2, USDT: 2, IDR: 0,
+  BTC: 8, ETH: 18, BNB: 18, SOL: 9, USDT: 6, USD: 2, USDC: 2, IDR: 2,
 };
 
 export function toMainUnit(currency: string, smallest: number): number {

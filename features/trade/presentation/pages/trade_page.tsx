@@ -158,14 +158,24 @@ function OrderTicket({ coin }: { coin: Coin }) {
   const [price, setPrice] = useState(coin.price.toFixed(coin.price < 10 ? 4 : 2));
   const [amount, setAmount] = useState("");
   const [pct, setPct] = useState(0);
-  // Seed the ticket from the live price only when the pair changes — not on
-  // every price tick, otherwise live updates would clobber the user's input.
+  const [userEdited, setUserEdited] = useState(false);
+
+  // Seed the ticket from the live price only when the pair changes.
+  // We keep updating the price with live stream until the user interacts,
+  // to ensure the initial price matches the streamed backend price.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrice(coin.price.toFixed(coin.price < 10 ? 4 : 2));
     setAmount(""); setPct(0);
+    setUserEdited(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coin.sym]);
+
+  useEffect(() => {
+    if (!userEdited) {
+      setPrice(coin.price.toFixed(coin.price < 10 ? 4 : 2));
+    }
+  }, [coin.price, userEdited]);
 
   const isBuy = side === "buy";
   const quoteBalObj = balances.find(b => b.currency === 'USDT' || b.currency === 'USD' || b.currency === 'USDC');
@@ -181,6 +191,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
     setPct(p);
     if (isBuy) setAmount(((balQuote * p / 100) / px).toFixed(6));
     else setAmount((balBase * p / 100).toFixed(6));
+    setUserEdited(true);
   };
 
   const placeOrderMutation = usePlaceOrder();
@@ -204,6 +215,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
       });
       setAmount("");
       setPct(0);
+      setUserEdited(false);
     } catch {
       // Error surfaced below via placeOrderMutation.error
     }
@@ -213,7 +225,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
     <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: 20, boxShadow: "var(--shadow-card)" }}>
       <div style={{ display: "flex", gap: 0, background: "var(--inset)", borderRadius: "var(--r-sm)", padding: 4, marginBottom: 18 }}>
         {([["buy", "Buy"], ["sell", "Sell"]] as [string, string][]).map(([id, label]) => (
-          <button key={id} onClick={() => { setSide(id); setPct(0); }} style={{
+          <button key={id} onClick={() => { setSide(id); setPct(0); setUserEdited(true); }} style={{
             flex: 1, height: 40, borderRadius: "var(--r-xs)", border: "none", cursor: "pointer", font: "700 14px var(--font)",
             background: side === id ? (id === "buy" ? "var(--up)" : "var(--down)") : "transparent",
             color: side === id ? "#fff" : "var(--text-2)",
@@ -222,7 +234,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
       </div>
       <div style={{ display: "flex", gap: 16, marginBottom: 18, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
         {ORDER_TYPES.map(t => (
-          <button key={t} onClick={() => setType(t)} style={{
+          <button key={t} onClick={() => { setType(t); setUserEdited(true); }} style={{
             background: "none", border: "none", cursor: "pointer", padding: "0 0 12px", font: `${type === t ? 600 : 500} 13px var(--font)`,
             color: type === t ? "var(--text-hi)" : "var(--text-3)", borderBottom: type === t ? "2px solid var(--blue)" : "2px solid transparent", marginBottom: -1,
           }}>{t}</button>
@@ -231,8 +243,8 @@ function OrderTicket({ coin }: { coin: Coin }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {type === "Market"
           ? <TicketField label="Price" value="Market price" readOnly suffix="USD" />
-          : <TicketField label="Price" value={price} onChange={setPrice} suffix="USD" />}
-        <TicketField label="Amount" value={amount} onChange={(v) => { setAmount(v); setPct(0); }} suffix={coin.sym} />
+          : <TicketField label="Price" value={price} onChange={(v) => { setPrice(v); setUserEdited(true); }} suffix="USD" />}
+        <TicketField label="Amount" value={amount} onChange={(v) => { setAmount(v); setPct(0); setUserEdited(true); }} suffix={coin.sym} />
         <div style={{ display: "flex", gap: 8 }}>
           {[25, 50, 75, 100].map(p => (
             <button key={p} onClick={() => setByPct(p)} style={{

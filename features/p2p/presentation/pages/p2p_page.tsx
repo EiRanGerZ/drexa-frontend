@@ -320,7 +320,6 @@ function CreateAdModal({ onClose, onSuccess, createAd }: any) {
   const [maxAmt, setMaxAmt] = useState("");
   const [payMeth, setPayMeth] = useState(PAY_METHODS[0]);
   const [window, setWindow] = useState("15");
-  const [address, setAddress] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -331,8 +330,7 @@ function CreateAdModal({ onClose, onSuccess, createAd }: any) {
         min_amount: parseFloat(minAmt),
         max_amount: parseFloat(maxAmt),
         payment_method: payMeth,
-        payment_window: parseInt(window),
-        seller_address: address
+        payment_window: parseInt(window)
       });
       onSuccess();
     } catch (err) {}
@@ -368,23 +366,18 @@ function CreateAdModal({ onClose, onSuccess, createAd }: any) {
           </label>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-2)" }}>
             Payment Method
             <select value={payMeth} onChange={e => setPayMeth(e.target.value)} style={{ padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "var(--text-hi)" }}>
-              {PAY_METHODS.map(a => <option key={a} value={a}>{a}</option>)}
+              {PAY_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-2)" }}>
-            Payment Window (min)
+            Payment Window (mins)
             <input required type="number" value={window} onChange={e => setWindow(e.target.value)} placeholder="15" style={{ padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "var(--text-hi)" }} />
           </label>
         </div>
-
-        <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-2)", marginBottom: 24 }}>
-          Your EVM Address (for Escrow Refund)
-          <input required value={address} onChange={e => setAddress(e.target.value)} placeholder="0x..." style={{ padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "var(--text-hi)" }} />
-        </label>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} style={{ padding: "10px 20px", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer" }}>Cancel</button>
@@ -397,7 +390,6 @@ function CreateAdModal({ onClose, onSuccess, createAd }: any) {
 
 function CreateOrderModal({ ad, onClose, onSuccess, createOrder }: any) {
   const [amount, setAmount] = useState("");
-  const [address, setAddress] = useState("");
   
   const totalUSD = (parseFloat(amount) || 0) * ad.price;
 
@@ -406,8 +398,7 @@ function CreateOrderModal({ ad, onClose, onSuccess, createOrder }: any) {
     try {
       const order = await createOrder.mutate({
         advertisement_id: ad.advertisement_id,
-        amount: parseFloat(amount),
-        buyer_address: address
+        amount: parseFloat(amount)
       });
       onSuccess(order);
     } catch (err) {}
@@ -426,15 +417,10 @@ function CreateOrderModal({ ad, onClose, onSuccess, createOrder }: any) {
           <input required type="number" step="any" min={ad.min_amount} max={ad.max_amount} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "var(--text-hi)" }} />
         </label>
 
-        <div style={{ padding: 14, background: "var(--inset)", borderRadius: "var(--r-sm)", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: 14, background: "var(--inset)", borderRadius: "var(--r-sm)", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 13, color: "var(--text-3)" }}>I will pay</span>
           <span style={{ fontSize: 16, fontWeight: 600, color: "var(--text-hi)", fontFamily: "var(--mono)" }}>{fUSD(totalUSD)}</span>
         </div>
-
-        <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-2)", marginBottom: 24 }}>
-          My EVM Address (to receive Crypto)
-          <input required value={address} onChange={e => setAddress(e.target.value)} placeholder="0x..." style={{ padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "var(--text-hi)" }} />
-        </label>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} style={{ padding: "10px 20px", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer" }}>Cancel</button>
