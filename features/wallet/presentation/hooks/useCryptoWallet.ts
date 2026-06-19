@@ -10,7 +10,7 @@ export interface CryptoAsset {
 }
 
 /** Currencies the Tatum-backed gateway serves real on-chain addresses for. */
-export const CRYPTO_SUPPORTED = ["BTC", "ETH"] as const;
+export const CRYPTO_SUPPORTED = ["BTC", "ETH", "SOL", "USDT", "BNB"] as const;
 
 export function isCryptoSupported(currency: string): boolean {
   return (CRYPTO_SUPPORTED as readonly string[]).includes(currency);

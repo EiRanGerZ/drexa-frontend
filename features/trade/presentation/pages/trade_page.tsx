@@ -12,6 +12,7 @@ import { useBinanceKlines } from "@/features/core/presentation/hooks/use_binance
 import { usePlaceOrder } from "../hooks/usePlaceOrder";
 import { useOrders } from "../hooks/useOrders";
 import type { OrderSide, OrderType } from "../../model/order";
+import { useWalletData } from "@/features/wallet/presentation/hooks/useWalletData";
 import { useScrollReveal } from "@/features/core/presentation/hooks/use_scroll_reveal";
 
 export interface Candle {

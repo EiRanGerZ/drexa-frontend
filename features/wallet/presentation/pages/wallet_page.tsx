@@ -15,7 +15,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
-const DEFAULT_ASSETS = ["USD", "BTC", "ETH", "USDC", "USDT"];
+const DEFAULT_ASSETS = ["USD", "BTC", "ETH", "SOL", "USDT", "BNB"];
 
 interface WalRow { sym: string; qty: number; price: number; value: number; inOrders: number; available: number; name: string; }
 
@@ -385,6 +385,37 @@ function AssetSelect({ rows, asset, coinRow, open, setOpen, setAsset, setNet }: 
 
 const tdWm: CSSProperties = { textAlign: "right", padding: "16px 24px", font: "500 13.5px var(--mono)", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" };
 
+function CryptoAddressCell({ sym }: { sym: string }) {
+  const { data, loading, error } = useCryptoAddress(sym);
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = () => {
+    if (!data) return;
+    navigator.clipboard.writeText(data.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  if (loading) {
+    return <span style={{ font: "500 12px var(--font)", color: "var(--text-4)" }}>Loading...</span>;
+  }
+  if (error || !data) {
+    return <span style={{ font: "500 12px var(--font)", color: "var(--text-4)" }}>—</span>;
+  }
+
+  const addr = data.address;
+  const truncated = addr.length > 18 ? addr.slice(0, 8) + "…" + addr.slice(-6) : addr;
+
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "6px 12px", maxWidth: 220 }}>
+      <span style={{ font: "500 12px var(--mono)", color: "var(--text-2)", letterSpacing: "0.01em" }}>{truncated}</span>
+      <button onClick={copyAddress} title={addr} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flex: "none" }}>
+        <Icon name={copied ? "check" : "copy"} size={13} color={copied ? "var(--up)" : "var(--text-3)"} />
+      </button>
+    </div>
+  );
+}
+
 export function WalletPage() {
   useScrollReveal();
   const { balances, transactions: apiTxns, refresh } = useWalletData();
@@ -424,7 +455,15 @@ export function WalletPage() {
     return apiTxns.map(t => ({
       type: t.type === 'deposit' ? 'Deposit' : t.type === 'withdrawal' ? 'Withdraw' : 'Transfer',
       sym: t.currency.toUpperCase(),
-      amt: t.amount / (t.currency.toUpperCase() === 'BTC' ? 100_000_000 : t.currency.toUpperCase() === 'ETH' ? 1_000_000_000_000_000_000 : 100),
+      amt: t.amount / (() => {
+        switch (t.currency.toUpperCase()) {
+          case 'BTC': return 100_000_000;
+          case 'ETH': case 'BNB': return 1_000_000_000_000_000_000;
+          case 'SOL': return 1_000_000_000;
+          case 'USDT': return 1_000_000;
+          default: return 100;
+        }
+      })(),
       status: t.status === 'completed' ? 'Completed' : t.status === 'failed' ? 'Failed' : 'Pending',
       net: 'Drexa',
       time: new Date(t.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -512,11 +551,15 @@ export function WalletPage() {
                   <td style={tdWm}>{fNum(r.available / r.price, r.qty < 1 ? 5 : 2)}</td>
                   <td style={{ ...tdWm, color: "var(--text-hi)", fontWeight: 600 }}>{fUSD(r.value)}</td>
                   <td style={{ textAlign: "right", padding: "16px 24px" }}>
-                    <div style={{ display: "inline-flex", gap: 6 }}>
-                      <button onClick={() => openModal("deposit", r.sym)} className="wal-act">Deposit</button>
-                      <button onClick={() => openModal("withdraw", r.sym)} className="wal-act">Withdraw</button>
-                      <button onClick={() => openModal("transfer", r.sym)} className="wal-act">Transfer</button>
-                    </div>
+                    {isCryptoSupported(r.sym) ? (
+                      <CryptoAddressCell sym={r.sym} />
+                    ) : (
+                      <div style={{ display: "inline-flex", gap: 6 }}>
+                        <button onClick={() => openModal("deposit", r.sym)} className="wal-act">Deposit</button>
+                        <button onClick={() => openModal("withdraw", r.sym)} className="wal-act">Withdraw</button>
+                        <button onClick={() => openModal("transfer", r.sym)} className="wal-act">Transfer</button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

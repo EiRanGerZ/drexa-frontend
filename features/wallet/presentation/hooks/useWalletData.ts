@@ -49,9 +49,11 @@ export interface ParsedBalance {
 function parseBalance(b: WalletBalanceResponse): ParsedBalance {
   let divider = 1;
   const sym = b.currency.toUpperCase();
-  if (sym === 'BTC') divider = 100_000_000; // 10^8
-  else if (sym === 'ETH') divider = 1_000_000_000_000_000_000; // 10^18
-  else if (sym === 'USD' || sym === 'IDR' || sym === 'USDC' || sym === 'USDT') divider = 100;
+  if (sym === 'BTC') divider = 100_000_000;
+  else if (sym === 'ETH' || sym === 'BNB') divider = 1_000_000_000_000_000_000;
+  else if (sym === 'SOL') divider = 1_000_000_000;
+  else if (sym === 'USDT') divider = 1_000_000;
+  else if (sym === 'USD' || sym === 'IDR' || sym === 'USDC') divider = 100;
 
   return {
     currency: sym,
