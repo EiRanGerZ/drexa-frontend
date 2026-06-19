@@ -308,8 +308,8 @@ function OrdersPanel() {
           <tbody>
             {loading && openOrders.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "40px 0" }}>Loading...</td></tr>}
             {!loading && openOrders.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "40px 0" }}>No open orders</td></tr>}
-            {openOrders.map((o) => (
-            <tr key={o.order_id} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
+            {openOrders.map((o, i) => (
+            <tr key={o.order_id ? `${o.order_id}-${i}` : i} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
               <td style={{ ...td, color: "var(--text-hi)", fontWeight: 600 }}>{(o.pair_id || "").replace('_', '/')}</td><td style={td}><SideTag s={o.side} /></td><td style={{ ...td, textTransform: "capitalize" }}>{o.type}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{fNum(o.price || 0, (o.price || 0) < 10 ? 4 : 2)}</td><td style={{ ...tdM, textAlign: "right" }}>{o.quantity}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{o.filled_quantity}</td><td style={{ ...tdM, textAlign: "right", color: "var(--text-3)" }}>{formatDate(o.created_at)}</td>
@@ -322,8 +322,8 @@ function OrdersPanel() {
           <tbody>
             {loading && historyOrders.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", padding: "40px 0" }}>Loading...</td></tr>}
             {!loading && historyOrders.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", padding: "40px 0" }}>No order history</td></tr>}
-            {historyOrders.map((o) => (
-            <tr key={o.order_id} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
+            {historyOrders.map((o, i) => (
+            <tr key={o.order_id ? `${o.order_id}-${i}` : i} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
               <td style={{ ...td, color: "var(--text-hi)", fontWeight: 600 }}>{(o.pair_id || "").replace('_', '/')}</td><td style={td}><SideTag s={o.side} /></td><td style={{ ...td, textTransform: "capitalize" }}>{o.type}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{fNum(o.price || 0, (o.price || 0) < 10 ? 4 : 2)}</td><td style={{ ...tdM, textAlign: "right" }}>{o.quantity}</td>
               <td style={{ ...td, textAlign: "right", textTransform: "capitalize" }}><span style={{ font: "600 12px var(--font)", color: o.status === "filled" ? "var(--up)" : "var(--text-3)" }}>{(o.status || "").replace('_', ' ')}</span></td>
@@ -336,8 +336,8 @@ function OrdersPanel() {
           <tbody>
             {loading && trades.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", padding: "40px 0" }}>Loading...</td></tr>}
             {!loading && trades.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", padding: "40px 0" }}>No trade history</td></tr>}
-            {trades.map((o) => (
-            <tr key={o.trade_id} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
+            {trades.map((o, i) => (
+            <tr key={o.trade_id ? `${o.trade_id}-${i}` : i} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
               <td style={{ ...td, color: "var(--text-hi)", fontWeight: 600 }}>{(o.pair_id || "").replace('_', '/')}</td><td style={td}><SideTag s={o.side} /></td>
               <td style={{ ...tdM, textAlign: "right" }}>{fNum(o.price || 0, (o.price || 0) < 10 ? 4 : 2)}</td><td style={{ ...tdM, textAlign: "right" }}>{o.quantity}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{fUSD(o.fee)}</td><td style={{ ...tdM, textAlign: "right", color: "var(--text-3)" }}>{formatDate(o.executed_at)}</td>
