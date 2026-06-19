@@ -234,7 +234,7 @@ function WithdrawModalContent({ rows, closeModal }: { rows: WalRow[], closeModal
 }
 
 function TransferModalContent({ rows, coinRow, asset, assetOpen, setAssetOpen, setAsset, setNet, closeModal }: { rows: WalRow[], coinRow: WalRow, asset: string, assetOpen: boolean, setAssetOpen: Dispatch<SetStateAction<boolean>>, setAsset: Dispatch<SetStateAction<string>>, setNet: Dispatch<SetStateAction<number>>, closeModal: () => void }) {
-  const [toUserId, setToUserId] = useState("");
+  const [toAddress, setToAddress] = useState("");
   const [txAmt, setTxAmt] = useState("");
   const [txNote, setTxNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -242,13 +242,13 @@ function TransferModalContent({ rows, coinRow, asset, assetOpen, setAssetOpen, s
   const [success, setSuccess] = useState(false);
 
   const handleTransfer = async () => {
-    if (!toUserId || !txAmt || isNaN(parseFloat(txAmt))) return;
+    if (!toAddress || !txAmt || isNaN(parseFloat(txAmt))) return;
     setLoading(true);
     setError("");
     try {
       const multiplier = (asset === "USD" || asset === "IDR") ? 100 : 100000000;
       await api.post("/wallet/transfer", {
-        to_user_id: toUserId,
+        to_address: toAddress,
         amount: Math.round(parseFloat(txAmt) * multiplier),
         currency: asset
       });
@@ -264,7 +264,7 @@ function TransferModalContent({ rows, coinRow, asset, assetOpen, setAssetOpen, s
       <div style={{ textAlign: "center", padding: "20px 0" }}>
         <Icon name="checkCircle" size={48} color="var(--up)" />
         <h3 style={{ font: "700 20px var(--font)", color: "var(--text-hi)", margin: "16px 0 8px" }}>Transfer Successful</h3>
-        <p style={{ font: "500 14px var(--font)", color: "var(--text-3)", marginBottom: 24 }}>Funds have been sent to {toUserId}.</p>
+        <p style={{ font: "500 14px var(--font)", color: "var(--text-3)", marginBottom: 24 }}>Funds have been sent to {toAddress}.</p>
         <button onClick={closeModal} style={{ width: "100%", height: 48, borderRadius: "var(--r-md)", border: "none", cursor: "pointer", background: "var(--blue)", color: "#fff", font: "700 14.5px var(--font)" }}>Done</button>
       </div>
     );
@@ -292,12 +292,12 @@ function TransferModalContent({ rows, coinRow, asset, assetOpen, setAssetOpen, s
       {/* to */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ font: "500 12px var(--font)", color: "var(--text-3)", marginBottom: 7, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>To User ID</span>
-          <button onClick={() => navigator.clipboard?.readText().then(t => setToUserId(t)).catch(() => {})} style={{ font: "600 11.5px var(--font)", color: "var(--blue-hover)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Paste</button>
+          <span>To Crypto Wallet Address</span>
+          <button onClick={() => navigator.clipboard?.readText().then(t => setToAddress(t)).catch(() => {})} style={{ font: "600 11.5px var(--font)", color: "var(--blue-hover)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Paste</button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 48, padding: "0 14px", background: "var(--surface)", border: "1px solid " + (toUserId.length > 10 ? "var(--blue)" : "var(--border)"), borderRadius: "var(--r-sm)", transition: "border-color .15s" }}>
-          <input value={toUserId} onChange={e => setToUserId(e.target.value)} placeholder={`Enter Recipient User ID`} style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text-hi)", font: "500 12.5px var(--mono)" }} />
-          {toUserId.length > 0 && <button onClick={() => setToUserId("")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", font: "600 18px var(--font)", lineHeight: 1 }}>×</button>}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 48, padding: "0 14px", background: "var(--surface)", border: "1px solid " + (toAddress.length > 10 ? "var(--blue)" : "var(--border)"), borderRadius: "var(--r-sm)", transition: "border-color .15s" }}>
+          <input value={toAddress} onChange={e => setToAddress(e.target.value)} placeholder={`Enter Recipient Crypto Address`} style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text-hi)", font: "500 12.5px var(--mono)" }} />
+          {toAddress.length > 0 && <button onClick={() => setToAddress("")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", font: "600 18px var(--font)", lineHeight: 1 }}>×</button>}
         </div>
       </div>
       {/* amount */}
@@ -321,7 +321,7 @@ function TransferModalContent({ rows, coinRow, asset, assetOpen, setAssetOpen, s
         <SummaryRow k="You send" v={txAmt ? txAmt + " " + asset : "—"} />
       </div>
       {error && <div style={{ color: "var(--warn)", font: "500 13px var(--font)", marginBottom: 10 }}>{error}</div>}
-      <button onClick={handleTransfer} disabled={!toUserId || !txAmt || loading} style={{ width: "100%", height: 48, borderRadius: "var(--r-md)", border: "none", cursor: (!toUserId || !txAmt || loading) ? "default" : "pointer", background: (!toUserId || !txAmt || loading) ? "var(--card-2)" : "var(--blue)", color: (!toUserId || !txAmt || loading) ? "var(--text-3)" : "#fff", font: "700 14.5px var(--font)", transition: "background .15s, color .15s" }}>
+      <button onClick={handleTransfer} disabled={!toAddress || !txAmt || loading} style={{ width: "100%", height: 48, borderRadius: "var(--r-md)", border: "none", cursor: (!toAddress || !txAmt || loading) ? "default" : "pointer", background: (!toAddress || !txAmt || loading) ? "var(--card-2)" : "var(--blue)", color: (!toAddress || !txAmt || loading) ? "var(--text-3)" : "#fff", font: "700 14.5px var(--font)", transition: "background .15s, color .15s" }}>
         {loading ? "Processing..." : "Confirm Transfer"}
       </button>
     </>
