@@ -11,6 +11,7 @@ import { useMarketStream, type OrderBook as OrderBookData } from "@/features/cor
 import { useBinanceKlines } from "@/features/core/presentation/hooks/use_binance_klines";
 import { usePlaceOrder } from "../hooks/usePlaceOrder";
 import { useOrders } from "../hooks/useOrders";
+import { useWalletData } from "@/features/wallet/presentation/hooks/useWalletData";
 import type { OrderSide, OrderType } from "../../model/order";
 import { useScrollReveal } from "@/features/core/presentation/hooks/use_scroll_reveal";
 
@@ -124,7 +125,7 @@ function OrderBook({ price, ob }: { price: number, ob?: OrderBookData }) {
           style={{ width: 7, height: 7, borderRadius: "50%", background: !!ob ? "var(--up)" : "var(--text-4)", boxShadow: !!ob ? "0 0 0 3px var(--up-soft)" : "none" }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "0 14px 8px", font: "600 10.5px var(--font)", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-        <span>Price (USDC)</span><span>Amount</span>
+        <span>Price (USD)</span><span>Amount</span>
       </div>
       <div>{rows.asks.map((r, i) => <Row key={i} r={r} side="ask" />)}</div>
       <div style={{ padding: "9px 14px", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -151,6 +152,7 @@ function TicketField({ label, value, onChange, suffix, readOnly }: { label: stri
   );
 }
 function OrderTicket({ coin }: { coin: Coin }) {
+  const { balances } = useWalletData();
   const [side, setSide] = useState("buy");
   const [type, setType] = useState("Limit");
   const [price, setPrice] = useState(coin.price.toFixed(coin.price < 10 ? 4 : 2));
@@ -170,7 +172,10 @@ function OrderTicket({ coin }: { coin: Coin }) {
   }, [coin.sym]);
 
   const isBuy = side === "buy";
-  const balQuote = 12480.00, balBase = 0.1312;
+  const quoteBalObj = balances.find(b => b.currency === 'USD' || b.currency === 'USDC');
+  const baseBalObj = balances.find(b => b.currency === coin.sym);
+  const balQuote = quoteBalObj?.available ?? 0;
+  const balBase = baseBalObj?.available ?? 0;
   const px = type === "Market" ? coin.price : (parseFloat(price) || coin.price);
   const amt = parseFloat(amount) || 0;
   const total = amt * px;
@@ -188,7 +193,8 @@ function OrderTicket({ coin }: { coin: Coin }) {
   const isMarket = type === "Market";
   const priceValue = parseFloat(price);
   const hasValidPrice = isMarket || (Number.isFinite(priceValue) && priceValue > 0);
-  const canSubmit = amt > 0 && hasValidPrice && !placeOrderMutation.isPending;
+  const hasEnoughBalance = isBuy ? (total <= balQuote) : (amt <= balBase);
+  const canSubmit = amt > 0 && hasValidPrice && hasEnoughBalance && !placeOrderMutation.isPending;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -227,12 +233,12 @@ function OrderTicket({ coin }: { coin: Coin }) {
         ))}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {type === "Stop-Limit" && <TicketField label="Stop price" value={stop} onChange={setStop} suffix="USDC" />}
-        {type === "OCO" && <TicketField label="Take-profit price" value={limit} onChange={setLimit} suffix="USDC" />}
-        {type === "OCO" && <TicketField label="Stop price" value={stop} onChange={setStop} suffix="USDC" />}
+        {type === "Stop-Limit" && <TicketField label="Stop price" value={stop} onChange={setStop} suffix="USD" />}
+        {type === "OCO" && <TicketField label="Take-profit price" value={limit} onChange={setLimit} suffix="USD" />}
+        {type === "OCO" && <TicketField label="Stop price" value={stop} onChange={setStop} suffix="USD" />}
         {type === "Market"
-          ? <TicketField label="Price" value="Market price" readOnly suffix="USDC" />
-          : (type !== "OCO" && <TicketField label={type === "Stop-Limit" ? "Limit price" : "Price"} value={price} onChange={setPrice} suffix="USDC" />)}
+          ? <TicketField label="Price" value="Market price" readOnly suffix="USD" />
+          : (type !== "OCO" && <TicketField label={type === "Stop-Limit" ? "Limit price" : "Price"} value={price} onChange={setPrice} suffix="USD" />)}
         <TicketField label="Amount" value={amount} onChange={(v) => { setAmount(v); setPct(0); }} suffix={coin.sym} />
         <div style={{ display: "flex", gap: 8 }}>
           {[25, 50, 75, 100].map(p => (
@@ -243,9 +249,9 @@ function OrderTicket({ coin }: { coin: Coin }) {
             }}>{p}%</button>
           ))}
         </div>
-        <TicketField label="Total" value={amt ? fNum(total) : ""} readOnly suffix="USDC" />
+        <TicketField label="Total" value={amt ? fNum(total) : ""} readOnly suffix="USD" />
         <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 0", borderTop: "1px solid var(--border-soft)" }}>
-          {([["Available", isBuy ? fUSD(balQuote) + " USDC" : fNum(balBase, 4) + " " + coin.sym],
+          {([["Available", isBuy ? fUSD(balQuote) + " USD" : fNum(balBase, 4) + " " + coin.sym],
             ["Est. fee (0.10%)", fUSD(fee)],
             [isBuy ? "You receive" : "You get", isBuy ? fNum(amt, 6) + " " + coin.sym : fUSD(total - fee)]] as [string, string][]).map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between", font: "500 13px var(--font)" }}>
@@ -265,7 +271,7 @@ function OrderTicket({ coin }: { coin: Coin }) {
           </div>
         )}
         <button onClick={handleSubmit} disabled={!canSubmit} style={{ height: 50, borderRadius: "var(--r-md)", border: "none", cursor: canSubmit ? "pointer" : "not-allowed", background: accent, color: "#fff", font: "700 15px var(--font)", opacity: canSubmit ? 1 : 0.5 }}>
-          {placeOrderMutation.isPending ? "Placing…" : `${isBuy ? "Buy" : "Sell"} ${coin.sym}`}
+          {placeOrderMutation.isPending ? "Placing…" : (!hasEnoughBalance && amt > 0) ? "Insufficient balance" : `${isBuy ? "Buy" : "Sell"} ${coin.sym}`}
         </button>
       </div>
     </div>
@@ -274,13 +280,16 @@ function OrderTicket({ coin }: { coin: Coin }) {
 
 function OrdersPanel() {
   const [tab, setTab] = useState("open");
-  const { openOrders, historyOrders, trades, loading } = useOrders();
+  const { openOrders, historyOrders, trades, loading, cancelOrder, cancelling } = useOrders();
 
   const tabs: [string, string][] = [["open", "Open Orders"], ["history", "Order History"], ["trades", "Trade History"]];
   const th: CSSProperties = { textAlign: "left", padding: "12px 20px", font: "600 11px var(--font)", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" };
   const td: CSSProperties = { padding: "13px 20px", font: "500 13px var(--font)", color: "var(--text-2)" };
   const tdM: CSSProperties = { ...td, fontFamily: "var(--mono)", fontVariantNumeric: "tabular-nums" };
-  const SideTag = ({ s }: { s: string }) => <span style={{ font: "600 12.5px var(--font)", textTransform: "capitalize", color: s.toLowerCase() === "buy" ? "var(--up)" : "var(--down)" }}>{s}</span>;
+  const SideTag = ({ s }: { s?: string }) => {
+    const val = s || "";
+    return <span style={{ font: "600 12.5px var(--font)", textTransform: "capitalize", color: val.toLowerCase() === "buy" ? "var(--up)" : "var(--down)" }}>{val}</span>;
+  };
 
   const formatDate = (dateStr: string) => {
     try {
@@ -304,7 +313,7 @@ function OrdersPanel() {
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         {tab === "open" && <>
-          <thead><tr>{["Pair", "Side", "Type", "Price", "Amount", "Filled", "Time", ""].map((h, i) => <th key={i} style={{ ...th, textAlign: i > 2 && i < 7 ? "right" : "left" }}>{h}</th>)}</tr></thead>
+          <thead><tr>{["Pair", "Side", "Type", "Price", "Amount", "Total", "Filled", "Time", ""].map((h, i) => <th key={i} style={{ ...th, textAlign: i > 2 && i < 8 ? "right" : "left" }}>{h}</th>)}</tr></thead>
           <tbody>
             {loading && openOrders.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "40px 0" }}>Loading...</td></tr>}
             {!loading && openOrders.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "40px 0" }}>No open orders</td></tr>}
@@ -312,8 +321,9 @@ function OrdersPanel() {
             <tr key={o.order_id ? `${o.order_id}-${i}` : i} className="mkt-row" style={{ borderTop: "1px solid var(--border-soft)" }}>
               <td style={{ ...td, color: "var(--text-hi)", fontWeight: 600 }}>{(o.pair_id || "").replace('_', '/')}</td><td style={td}><SideTag s={o.side} /></td><td style={{ ...td, textTransform: "capitalize" }}>{o.type}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{fNum(o.price || 0, (o.price || 0) < 10 ? 4 : 2)}</td><td style={{ ...tdM, textAlign: "right" }}>{o.quantity}</td>
+              <td style={{ ...tdM, textAlign: "right" }}>{fNum((o.price || 0) * (o.quantity || 0), (o.price || 0) * (o.quantity || 0) < 10 ? 4 : 2)}</td>
               <td style={{ ...tdM, textAlign: "right" }}>{o.filled_quantity}</td><td style={{ ...tdM, textAlign: "right", color: "var(--text-3)" }}>{formatDate(o.created_at)}</td>
-              <td style={{ ...td, textAlign: "right" }}><button style={{ font: "600 12.5px var(--font)", color: "var(--down)", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></td>
+              <td style={{ ...td, textAlign: "right" }}><button onClick={() => cancelOrder(o.order_id)} disabled={cancelling.has(o.order_id)} style={{ font: "600 12.5px var(--font)", color: "var(--down)", background: "none", border: "none", cursor: cancelling.has(o.order_id) ? "not-allowed" : "pointer", opacity: cancelling.has(o.order_id) ? 0.5 : 1 }}>{cancelling.has(o.order_id) ? "Cancelling..." : "Cancel"}</button></td>
             </tr>
           ))}</tbody>
         </>}
@@ -382,7 +392,7 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
           <div style={{ position: "relative" }}>
             <button onClick={() => setPairOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               <CoinBadge sym={sym} size={40} />
-              <span style={{ font: "700 20px var(--font)", color: "var(--text-hi)" }}>{sym}/USDC</span>
+              <span style={{ font: "700 20px var(--font)", color: "var(--text-hi)" }}>{sym}/USD</span>
               <Icon name="chevDown" size={18} color="var(--text-3)" style={{ transform: pairOpen ? "rotate(180deg)" : "none" }} />
             </button>
             {pairOpen && (
@@ -390,7 +400,7 @@ export function TradePage({ sym: symProp }: { sym?: string }) {
                 {COINS.map(c => (
                   <button key={c.sym} onClick={() => { setSym(c.sym); setPairOpen(false); }} className="dd-item" style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "9px 10px", borderRadius: "var(--r-sm)", border: "none", background: "none", cursor: "pointer" }}>
                     <CoinBadge sym={c.sym} size={28} />
-                    <span style={{ flex: 1, textAlign: "left", font: "600 13.5px var(--font)", color: "var(--text-hi)" }}>{c.sym}/USDC</span>
+                    <span style={{ flex: 1, textAlign: "left", font: "600 13.5px var(--font)", color: "var(--text-hi)" }}>{c.sym}/USD</span>
                     <Delta v={c.ch} size={12} />
                   </button>
                 ))}
